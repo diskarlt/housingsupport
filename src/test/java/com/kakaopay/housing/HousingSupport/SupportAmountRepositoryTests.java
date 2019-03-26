@@ -16,6 +16,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.junit.Assert.assertEquals;
 
@@ -28,6 +29,9 @@ public class SupportAmountRepositoryTests {
     @Autowired
     private SupportAmountRepository supportAmountRepository;
 
+    /**
+     * 지원 금액 생성
+     */
     @Before
     public void before() {
         List<String> bankNameList = new ArrayList<>();
@@ -67,19 +71,25 @@ public class SupportAmountRepositoryTests {
         }
     }
 
+    /**
+     * Repository cleanUp
+     */
     @After
     public void after() {
         supportAmountRepository.deleteAll();
         bankRepository.deleteAll();
     }
 
+    /**
+     * 연도별 금융 합계 조회
+     */
     @Test
     public void test_summary() {
-        List<SupportAmount> supportAmountList = supportAmountRepository.summary();
-        for (SupportAmount supportAmount : supportAmountList) {
-            if(supportAmount.getBank() == bankRepository.findByName("국민은행").get()) {
+        Stream<SupportAmount> supportAmountStream = supportAmountRepository.summary();
+        supportAmountStream.forEach(supportAmount -> {
+            if (supportAmount.getBank() == bankRepository.findByName("국민은행").get()) {
                 // 연도별 금액 합계가 맞는지 확인한다.
-                if(supportAmount.getYear() == 2005) {
+                if (supportAmount.getYear() == 2005) {
                     assertEquals(1200, supportAmount.getAmount());
                 } else if (supportAmount.getYear() == 2006) {
                     assertEquals(2400, supportAmount.getAmount());
@@ -89,9 +99,12 @@ public class SupportAmountRepositoryTests {
             } else {
                 assertEquals(1200, supportAmount.getAmount());
             }
-        }
+        });
     }
 
+    /**
+     * 가장 많은 연도별 지원금액을 지원한 연도 및 은행
+     */
     @Test
     public void test_highest_amount() {
         List<SupportAmount> supportAmountList = supportAmountRepository.findHighestSupport(PageRequest.of(0, 1));
@@ -103,6 +116,9 @@ public class SupportAmountRepositoryTests {
         assertEquals("국민은행", supportAmount.getBank().getName());
     }
 
+    /**
+     * 가장 큰/작은 평균 지원 금액
+     */
     @Test
     public void test_min_max_amount() {
         Bank bank = bankRepository.findByName("국민은행").get();

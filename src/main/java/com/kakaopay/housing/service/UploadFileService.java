@@ -20,7 +20,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
+import java.util.stream.IntStream;
 
 @Service
 @Slf4j
@@ -30,76 +30,82 @@ public class UploadFileService {
     @Autowired
     private SupportAmountRepository supportAmountRepository;
 
+    /**
+     * 지원 금액 정보 삭제
+     */
     @Transactional
     public void deleteAll() {
         supportAmountRepository.deleteAll();
         bankRepository.deleteAll();
     }
 
-    @Transactional
-    private void saveBankFromCSVHeader(@NotNull List<String> list) {
-        List<Bank> bankList = new ArrayList<>();
-        list.stream()
-                .filter(header -> !header.equals("연도")&&!header.equals("월"))
-                .map(name -> Bank.builder()
-                        .name(name)
-                        .build())
-                .forEach(bankList::add);
-        bankRepository.saveAll(bankList);
+    /**
+     * CSV의 헤더에서 연도 및 월을 제외한 레코드 정보를 기반으로 금융기관 정보를 Bank에 저장한다.
+     * 저장 시 (억원) 또는 샘플코드의 주택도시기금1) 과 같은 형태의 금융기관 명을 보정하여 저장한다.
+     * @param csvHeader 데이터 파일의 Header Line
+     * @return 금융기관 정보 리스트
+     */
+    private List<Bank> saveBankFromCSVHeader(@NotNull CSVRecord csvHeader) {
+        List<Bank> list = new ArrayList<>();
+        IntStream.range(0, csvHeader.size())
+                .filter(i -> !csvHeader.get(i).isEmpty())
+                .forEachOrdered(i -> {
+                    String header = csvHeader.get(i);
+                    if (header.equals("연도") || header.equals("월")) {
+                        list.add(Bank.builder().build());
+                    } else {
+                        list.add(bankRepository.save(Bank.builder()
+                                .name(header
+                                        .replace("(억원)", "")    // 국민은행(억원) -> 국민은행
+                                        .replace("주택도시기금1)", "주택도시기금"))
+                                .build()));
+                    }
+                });
+        return list;
     }
 
-    @Transactional
-    private void saveSupportAmounts(@NotNull List<String> headerList, @NotNull List<String> recordList) {
-        List<Optional<Bank>> bankList = new ArrayList<>();
-        List<SupportAmount> supportAmountList = new ArrayList<>();
-        int yearIdx = headerList.indexOf("연도");
-        int monthIdx = headerList.indexOf("월");
-        int year = Integer.parseInt(recordList.get(yearIdx));
-        int month = Integer.parseInt(recordList.get(monthIdx));
-
-        for (String s : headerList) {
-            bankList.add(bankRepository.findByName(s));
-        }
-
-        for (int i = 0; i < recordList.size(); i++) {
-            if (bankList.get(i).isPresent()) {
-                SupportAmount build = SupportAmount.builder()
+    /**
+     * 연도, 월에 해당하는 지원 금액을 SupportAmount에 저장한다
+     * @param bankList Bank 리스트
+     * @param csvRecord 데이터 파일의 body line
+     */
+    private void saveSupportAmounts(List<Bank> bankList, @NotNull CSVRecord csvRecord) {
+        int year = Integer.parseInt(csvRecord.get(0));
+        int month = Integer.parseInt(csvRecord.get(1));
+        IntStream.range(2, csvRecord.size()).filter(i -> !csvRecord.get(i).isEmpty())
+                .mapToObj(i -> SupportAmount.builder()
                         .year(year)
                         .month(month)
-                        .amount(Integer.parseInt(recordList.get(i)))
-                        .bank(bankList.get(i).get())
-                        .build();
-                supportAmountList.add(build);
-            }
-        }
-        supportAmountRepository.saveAll(supportAmountList);
+                        .amount(Integer.parseInt(csvRecord.get(i).replace(",", ""))) // 1,234와 같은 포맷 보정
+                        .bank(bankList.get(i))
+                        .build())
+                .forEach(supportAmount -> supportAmountRepository.save(supportAmount));
     }
 
-    public void uploadFile(MultipartFile multipartFile) throws IOException {
+    /**
+     * 업로드한 데이터 파일을 Parsing하여 Repository에 저장한다
+     * @param multipartFile 업로드한 데이터 파일
+     * @throws IOException IOException 발생
+     * @throws NoSuchFieldException 연도, 월 필드 없음
+     */
+    @Transactional
+    public void uploadFile(MultipartFile multipartFile) throws IOException, NoSuchFieldException {
         InputStream is = multipartFile.getInputStream();
         BufferedReader br = new BufferedReader(new InputStreamReader(is, "EUC-KR"));
-        CSVParser csvParser = new CSVParser(br, CSVFormat.DEFAULT);
-        List<String> headerList = new ArrayList<>();
+        try(CSVParser csvParser = new CSVParser(br, CSVFormat.DEFAULT)) {
+            List<Bank> bankList = null;
+            for (CSVRecord csvRecord : csvParser) {
+                if(bankList == null) {
+                    // CSV Header Parsing
+                    // 연도, 월, 순으로 시작하지 않을 경우 Exception 발생
+                    if(!csvRecord.get(0).equals("연도") || !csvRecord.get(1).equals("월"))
+                        throw new NoSuchFieldException();
 
-        for (CSVRecord csvRecord : csvParser) {
-            if(headerList.isEmpty()) {
-                for (int i = 0; i < csvRecord.size(); i++) {
-                    if (!csvRecord.get(i).isEmpty()) {
-                        headerList.add(csvRecord.get(i)
-                                .replace("(억원)", "")
-                                .replace("주택도시기금1)", "주택도시기금"));
-                    }
+                    bankList = saveBankFromCSVHeader(csvRecord);
+                } else {
+                    // CSV Body Parsing
+                    saveSupportAmounts(bankList, csvRecord);
                 }
-                saveBankFromCSVHeader(headerList);
-            } else {
-                List<String> recordList = new ArrayList<>();
-                for (int i = 0; i < csvRecord.size(); i++) {
-                    if (!csvRecord.get(i).isEmpty()) {
-                        recordList.add(csvRecord.get(i)
-                                .replace(",", ""));
-                    }
-                }
-                saveSupportAmounts(headerList, recordList);
             }
         }
     }

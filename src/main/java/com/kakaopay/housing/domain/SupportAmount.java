@@ -7,6 +7,9 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.ManyToOne;
 
+/**
+ * 년,월 기준으로 금융기관이 지원한 금액
+ */
 @Entity
 @Getter
 @Setter
@@ -20,12 +23,12 @@ public class SupportAmount {
     @GeneratedValue
     private Long id;
 
-    private int year;
-    private int month;
-    private int amount;
+    private int year;   // 연도
+    private int month;  // 월
+    private int amount; // 지원금액
 
     @ManyToOne
-    private Bank bank;
+    private Bank bank;  // 금융기관
 
     public SupportAmount(int year, long amount, Bank bank) {
         this.year = year;

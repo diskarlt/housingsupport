@@ -11,7 +11,7 @@ public class PredictionDto {
     private String month;
     private String amount;
 
-    public PredictionDto(@NotNull Bank bank, int year, int month, int amount) {
+    public PredictionDto(@NotNull Bank bank, Integer year, Integer month, Integer amount) {
         this.bank = bank.getName();
         this.year = String.valueOf(year);
         this.month = String.valueOf(month);

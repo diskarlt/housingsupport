@@ -16,6 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,18 +38,13 @@ public class UploadFileServiceTests {
     public void test_upload_file() {
         File file = new File("src/test/resources/HousingSupportAmount.csv");
         try {
-            List<Bank> bankList = new ArrayList<>();
-            List<SupportAmount> supportAmountList = new ArrayList<>();
-            when(bankRepository.saveAll(anyList())).thenReturn(bankList);
-            when(supportAmountRepository.saveAll(anyList())).thenReturn(supportAmountList);
-
             FileInputStream input = new FileInputStream(file);
             MultipartFile multipartFile = new MockMultipartFile(file.getName(), input);
             uploadFileService.uploadFile(multipartFile);
 
-            verify(bankRepository).saveAll(any());
-            verify(supportAmountRepository, times(154)).saveAll(any());
-        } catch (java.io.IOException e) {
+            verify(bankRepository, times(9)).save(any(Bank.class));
+            verify(supportAmountRepository, times(1386)).save(any(SupportAmount.class));
+        } catch (IOException | NoSuchFieldException e) {
             e.printStackTrace();
         }
     }

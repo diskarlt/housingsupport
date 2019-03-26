@@ -1,8 +1,10 @@
 package com.kakaopay.housing.service;
 
-import com.kakaopay.housing.domain.Bank;
 import com.kakaopay.housing.domain.SupportAmount;
-import com.kakaopay.housing.dto.*;
+import com.kakaopay.housing.dto.BankDto;
+import com.kakaopay.housing.dto.HighestSupportDto;
+import com.kakaopay.housing.dto.MinMaxDto;
+import com.kakaopay.housing.dto.SummaryDto;
 import com.kakaopay.housing.repository.BankRepository;
 import com.kakaopay.housing.repository.SupportAmountRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -11,10 +13,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import javax.persistence.EntityNotFoundException;
-import java.util.ArrayList;
+import javax.transaction.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 
@@ -26,6 +28,10 @@ public class HousingSupportService {
     @Autowired
     private SupportAmountRepository supportAmountRepository;
 
+    /**
+     * 금융기관 목록 조회
+     * @return 금융기관 목록
+     */
     public List<BankDto> findBankList() {
         return bankRepository.findAll()
                 .stream()
@@ -33,70 +39,36 @@ public class HousingSupportService {
                 .collect(toList());
     }
 
+    /**
+     * 연도별 각 금융기관의 지원금액 합계 조회
+     * @return 연도별 각 금융기관의 지원금액 합계
+     */
+    @Transactional
     public SummaryDto summary() {
         SummaryDto summaryDto = new SummaryDto();
-        summaryDto.setSummaryPerYear(supportAmountRepository.summary()
-                .stream()
-                .collect(Collectors.groupingBy(SupportAmount::getYear))
-        );
+        try (Stream<SupportAmount> supportAmountStream = supportAmountRepository.summary()) {
+            summaryDto.setSummaryPerYear(supportAmountStream.collect((Collectors.groupingBy(SupportAmount::getYear))));
+        }
         log.info(summaryDto.toString());
         return summaryDto;
     }
 
+    /**
+     * 각 연도별 각 기관의 전체 지원금액 중 연도별 지원금액 합계가 가장 컸던 해와 해당 금액을 지원한 기관명 조회
+     * @return 연도별 지원금액 합계가 가장 컸던 해와 해당 금액을 지원한 기관명
+     */
     public HighestSupportDto findHighestSupport() {
         return new HighestSupportDto(supportAmountRepository.findHighestSupport(PageRequest.of(0, 1)).get(0));
     }
 
+    /**
+     * 전체 년도에서 특정 금융기관의 지원금액 평균 중에서 가장 작은 금액과 큰 금액 조회
+     * @param bankId 조회할 금융기관 Id
+     * @return 금융기관명과 가장 작았던/컸던 지원금액 평균
+     */
     public MinMaxDto findMinMax(Long bankId) {
         return new MinMaxDto(bankRepository.findById(bankId).orElseThrow(EntityNotFoundException::new),
                 supportAmountRepository.findAvgMinSupport(bankId, PageRequest.of(0, 1)).get(0),
                 supportAmountRepository.findAvgMaxSupport(bankId, PageRequest.of(0, 1)).get(0));
-    }
-
-    public PredictionDto predict(long id, int year, int month) {
-        List<Integer> x = new ArrayList<>();
-        List<Integer> y = new ArrayList<>();
-
-        Bank bank = bankRepository.findById(id).orElseThrow(EntityNotFoundException::new);
-        List<SupportAmount> supportAmountList = supportAmountRepository.findAllByBank_Id(bank.getId());
-        supportAmountList.forEach(supportAmount -> {
-            x.add(supportAmount.getYear() * 12 + supportAmount.getMonth());
-            y.add(supportAmount.getAmount());
-        });
-
-        Integer numberOfDataValues = x.size();
-
-        List<Double> xSquared = x.stream()
-                .map(position -> Math.pow(position, 2))
-                .collect(Collectors.toList());
-
-        List<Integer> xMultipliedByY = IntStream.range(0, numberOfDataValues)
-                .map(i -> x.get(i) * y.get(i))
-                .boxed()
-                .collect(Collectors.toList());
-
-        Integer xSummed = x.stream()
-                .reduce(0, (prev, next) -> prev + next);
-
-        Integer ySummed = y.stream()
-                .reduce(0, (prev, next) -> prev + next);
-
-        Double sumOfXSquared = xSquared.stream()
-                .reduce(0.0, (prev, next) -> prev + next);
-
-        Integer sumOfXMultipliedByY = xMultipliedByY.stream()
-                .reduce(0, (prev, next) -> prev + next);
-
-        Integer slopeNominator = numberOfDataValues * sumOfXMultipliedByY - ySummed * xSummed;
-        Double slopeDenominator = numberOfDataValues * sumOfXSquared - Math.pow(xSummed, 2);
-        Double slope = slopeNominator / slopeDenominator;
-
-        Double interceptNominator = ySummed - slope * xSummed;
-        Double interceptDenominator = Double.valueOf(numberOfDataValues);
-        Double intercept = interceptNominator / interceptDenominator;
-
-        double amount = (slope * (year*12 + month)) + intercept;
-
-        return new PredictionDto(bank, year, month, (int) amount);
     }
 }

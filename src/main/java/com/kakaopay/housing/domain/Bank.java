@@ -6,6 +6,9 @@ import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 
+/**
+ * 금융 기관 정보
+ */
 @Entity
 @Getter
 @Setter
@@ -17,6 +20,6 @@ import javax.persistence.Id;
 public class Bank {
     @Id
     @GeneratedValue
-    private Long id;
-    private String name;
+    private Long id;        // 금융 기관 id
+    private String name;    // 금융 기관명
 }

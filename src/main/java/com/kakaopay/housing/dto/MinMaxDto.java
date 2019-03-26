@@ -29,7 +29,7 @@ public class MinMaxDto {
 
     public MinMaxDto(@NotNull Bank bank, @NotNull SupportAmount minAmount, @NotNull SupportAmount maxAmount) {
         this.bank = bank.getName();
-        this.supportAmountList.add(new MinMaxAmount(minAmount));
-        this.supportAmountList.add(new MinMaxAmount(maxAmount));
+        this.supportAmountList.add(new MinMaxAmount(minAmount));    // 최소값
+        this.supportAmountList.add(new MinMaxAmount(maxAmount));    // 최대값
     }
 }

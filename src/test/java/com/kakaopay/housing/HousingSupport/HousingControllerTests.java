@@ -29,6 +29,9 @@ public class HousingControllerTests {
     @Autowired
     private WebTestClient client;
 
+    /**
+     * 데이터 업로드
+     */
     @Before
     public void test_upload() {
         client = client
@@ -48,6 +51,9 @@ public class HousingControllerTests {
         ;
     }
 
+    /**
+     * 데이터 삭제
+     */
     @After
     public void test_clear() {
         client.delete()
@@ -57,6 +63,9 @@ public class HousingControllerTests {
         ;
     }
 
+    /**
+     * 금융기관 목록 조회
+     */
     @Test
     public void test_bank_list() {
         client.get()
@@ -68,6 +77,9 @@ public class HousingControllerTests {
         ;
     }
 
+    /**
+     * 연도별 지원금액 합계 조회
+     */
     @Test
     public void test_summary() {
         client.get()
@@ -78,16 +90,22 @@ public class HousingControllerTests {
         ;
     }
 
+    /**
+     * 연도별 기관별 지원 금액 합계가 가장 큰 연도 및 기관명 조회
+     */
     @Test
     public void test_highest_support() {
         client.get()
                 .uri("/housing/supports/highest_support")
                 .exchange()
                 .expectStatus().isOk()
-                .expectBody(HighestSupportDto.class)
+                .expectBody()
         ;
     }
 
+    /**
+     * 연도별 기관별 지원 금액 평균이 가장 큰/작은 금액 조회
+     */
     @Test
     public void test_min_max() {
         List<BankDto> bankDtoList = new ArrayList<>();
@@ -114,6 +132,9 @@ public class HousingControllerTests {
         ;
     }
 
+    /**
+     * 금융지원 금액 예측
+     */
     @Test
     public void test_prediction() {
         List<BankDto> bankDtoList = new ArrayList<>();

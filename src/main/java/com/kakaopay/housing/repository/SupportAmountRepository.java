@@ -7,13 +7,14 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 public interface SupportAmountRepository extends JpaRepository<SupportAmount, Long> {
     @Query("SELECT new com.kakaopay.housing.domain.SupportAmount(s.year, SUM(s.amount), b)" +
             " FROM SupportAmount s LEFT JOIN s.bank b" +
             " GROUP BY s.year, b.name" +
             " ORDER BY s.year")
-    List<SupportAmount> summary();
+    Stream<SupportAmount> summary();
     @Query("SELECT new com.kakaopay.housing.domain.SupportAmount(s.year, SUM(s.amount), b)" +
             " FROM SupportAmount s LEFT JOIN s.bank b" +
             " GROUP BY s.year, b.name" +
@@ -31,5 +32,5 @@ public interface SupportAmountRepository extends JpaRepository<SupportAmount, Lo
             " GROUP BY s.year, b.name" +
             " ORDER BY AVG(s.amount) desc")
     List<SupportAmount> findAvgMaxSupport(@Param("bankId") long bankId, Pageable pageable);
-    List<SupportAmount> findAllByBank_Id(long bankId);
+    Stream<SupportAmount> findAllByBank_Id(long bankId);
 }

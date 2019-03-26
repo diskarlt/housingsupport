@@ -2,7 +2,10 @@ package com.kakaopay.housing.HousingSupport;
 
 import com.kakaopay.housing.domain.Bank;
 import com.kakaopay.housing.domain.SupportAmount;
-import com.kakaopay.housing.dto.*;
+import com.kakaopay.housing.dto.BankDto;
+import com.kakaopay.housing.dto.HighestSupportDto;
+import com.kakaopay.housing.dto.MinMaxDto;
+import com.kakaopay.housing.dto.SummaryDto;
 import com.kakaopay.housing.repository.BankRepository;
 import com.kakaopay.housing.repository.SupportAmountRepository;
 import com.kakaopay.housing.service.HousingSupportService;
@@ -20,8 +23,6 @@ import java.util.Optional;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -36,6 +37,9 @@ public class HousingSupportServiceTests {
     @Mock
     private SupportAmountRepository supportAmountRepository;
 
+    /**
+     * 금융기관 목록 조회
+     */
     @Test
     public void test_bank_list() {
         List<Bank> bankList = new ArrayList<>();
@@ -61,6 +65,9 @@ public class HousingSupportServiceTests {
         verify(bankRepository).findAll();
     }
 
+    /**
+     * 연도별 각 금융기관의 지원금액 합계 조회
+     */
     @Test
     public void test_summary() {
         List<SupportAmount> supportAmountList = new ArrayList<>();
@@ -81,7 +88,7 @@ public class HousingSupportServiceTests {
                     .bank(bank2)
                     .build());
         }
-        when(supportAmountRepository.summary()).thenReturn(supportAmountList);
+        when(supportAmountRepository.summary()).thenReturn(supportAmountList.stream());
 
         SummaryDto summaryDto = housingSupportService.summary();
         assertEquals("주택금융 공급현황", summaryDto.getName());
@@ -99,6 +106,9 @@ public class HousingSupportServiceTests {
         verify(supportAmountRepository).summary();
     }
 
+    /**
+     * 각 연도별 각 기관의 전체 지원금액 중 연도별 지원금액 합계가 가장 컸던 해와 해당 금액을 지원한 기관명 조회
+     */
     @Test
     public void test_highest_support() {
         List<SupportAmount> supportAmountList = new ArrayList<>();
@@ -119,6 +129,9 @@ public class HousingSupportServiceTests {
         verify(supportAmountRepository).findHighestSupport(PageRequest.of(0, 1));
     }
 
+    /**
+     * 전체 년도에서 특정 은행의 지원금액 평균 중에서 가장 작은 금액과 큰 금액 조회
+     */
     @Test
     public void test_min_max() {
         List<SupportAmount> minList = new ArrayList<>();
@@ -135,9 +148,9 @@ public class HousingSupportServiceTests {
                 .id(1L)
                 .name("외환은행")
                 .build();
-        when(bankRepository.findById(anyLong())).thenReturn(Optional.of(bank));
-        when(supportAmountRepository.findAvgMinSupport(anyLong(), any())).thenReturn(minList);
-        when(supportAmountRepository.findAvgMaxSupport(anyLong(), any())).thenReturn(maxList);
+        when(bankRepository.findById(bank.getId())).thenReturn(Optional.of(bank));
+        when(supportAmountRepository.findAvgMinSupport(bank.getId(), PageRequest.of(0, 1))).thenReturn(minList);
+        when(supportAmountRepository.findAvgMaxSupport(bank.getId(), PageRequest.of(0, 1))).thenReturn(maxList);
 
         MinMaxDto minMaxDto = housingSupportService.findMinMax(1L);
         assertEquals("외환은행", minMaxDto.getBank());
@@ -146,39 +159,7 @@ public class HousingSupportServiceTests {
         assertEquals("2010", minMaxDto.getSupportAmountList().get(1).getYear());
         assertEquals("546", minMaxDto.getSupportAmountList().get(1).getAmount());
 
-        verify(supportAmountRepository).findAvgMinSupport(anyLong(), any());
-        verify(supportAmountRepository).findAvgMaxSupport(anyLong(), any());
-    }
-
-    @Test
-    public void test_prediction() {
-        Bank bank = Bank.builder()
-                .id(1L)
-                .name("국민은행")
-                .build();
-        when(bankRepository.findById(anyLong())).thenReturn(Optional.of(bank));
-        List<SupportAmount> supportAmountList = new ArrayList<>();
-        supportAmountList.add(SupportAmount.builder()
-                .id(2L)
-                .year(2017)
-                .month(11)
-                .amount(100)
-                .build());
-        supportAmountList.add(SupportAmount.builder()
-                .id(3L)
-                .year(2017)
-                .month(12)
-                .amount(200)
-                .build());
-        when(supportAmountRepository.findAllByBank_Id(anyLong())).thenReturn(supportAmountList);
-
-        PredictionDto predictionDto = housingSupportService.predict(1L, 2018, 2);
-        assertEquals("국민은행", predictionDto.getBank());
-        assertEquals("2018", predictionDto.getYear());
-        assertEquals("2", predictionDto.getMonth());
-        assertEquals("400", predictionDto.getAmount());
-
-        verify(bankRepository).findById(anyLong());
-        verify(supportAmountRepository).findAllByBank_Id(anyLong());
+        verify(supportAmountRepository).findAvgMinSupport(bank.getId(), PageRequest.of(0, 1));
+        verify(supportAmountRepository).findAvgMaxSupport(bank.getId(), PageRequest.of(0, 1));
     }
 }
