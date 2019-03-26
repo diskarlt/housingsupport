@@ -87,6 +87,8 @@ public class HousingControllerTests {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
+                .jsonPath("$.name").isEqualTo("주택금융 공급현황")
+                .jsonPath("$.summary").isArray()
         ;
     }
 
@@ -100,6 +102,8 @@ public class HousingControllerTests {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
+                .jsonPath("$.year").exists()
+                .jsonPath("$.bank").exists()
         ;
     }
 
@@ -128,7 +132,8 @@ public class HousingControllerTests {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .consumeWith(response -> log.info(response.toString()))
+                .jsonPath("$.bank").isEqualTo("외환은행")
+                .jsonPath("$.support_amount").isArray()
         ;
     }
 
@@ -158,6 +163,10 @@ public class HousingControllerTests {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
+                .jsonPath("$.bank").isEqualTo("국민은행")
+                .jsonPath("$.year").exists()
+                .jsonPath("$.month").exists()
+                .jsonPath("$.amount").exists()
         ;
     }
 }
