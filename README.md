@@ -40,6 +40,7 @@
 
  -  GET /housing/supports/prediction/banks/{id}?year={year}&month={month}
     * 특정 은행의 특정 달에 대해서 금융지원 금액을 예측하는 API
+    * 예시에서는 JSON으로 입력받게 되어있으나, 예측 API의 경우 GET Method가 더 적합하다여겨 보다 RESTful한 설계를 위해 은행 및 예측할 연도 및 월에 대해 Parameter로 입력받도록 함
     * 경제학에서 경험적인 데이터를 통해 미래를 예측하고자 할 때 주로 사용하는 선형 회귀(linear regression) 알고리즘을 사용
 
 ## Build
